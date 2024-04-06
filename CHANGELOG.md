@@ -2,13 +2,43 @@
 
 All changes we make to the assignment code or PDF will be documented in this file.
 
-## [Unreleased] - yyyy-mm-0dd
+## [Unreleased] - yyyy-mm-dd
 
 ### Added
 
 ### Changed
 
 ### Fixed
+
+- code: fix typo in `run_get_lr_cosine_schedule` return docstring.
+- code: fix typo in `test_tokenizer.py`
+
+## [0.1.4] - 2024-04-04
+
+### Added
+
+### Changed
+
+- code: skip `Tokenizer` memory-related tests on non-Linux systems, since
+  support for RLIMIT_AS is inconsistent.
+- code: reduce increase atol on end-to-end Transformer forward pass tests.
+- code: remove dropout in model-related tests to improve determinism across
+  platforms.
+- code: add `attn_pdrop` to `run_multihead_self_attention` adapter.
+- code: clarify `{q,k,v}_proj` dimension orders in the adapters.
+- code: increase atol on cross-entropy tests
+- code: remove unnecessary warning in `test_get_lr_cosine_schedule`
+
+### Fixed
+
+- handout: fix signature of `Tokenizer.__init__` to include `self`.
+- handout: mention that `Tokenizer.from_files` should be a class method.
+- handout: clarify list of model hyperparameters listed in `adamwAccounting`.
+- handout: clarify that `adamwAccounting` (b) considers a GPT-2 XL-shaped model
+  (with our architecture), not necessarily the literal GPT-2 XL model.
+- handout: moved softmax problem to where softmax is first mentioned (Scaled Dot-Product Attention, Section 3.4.3)
+- handout: removed redundant initialization (t = 0) in AdamW pseudocode
+- handout: added resources needed for BPE training
 
 ## [0.1.3] - 2024-04-02
 

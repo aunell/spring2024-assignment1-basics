@@ -91,6 +91,7 @@ def run_scaled_dot_product_attention(
 def run_multihead_self_attention(
     d_model: int,
     num_heads: int,
+    attn_pdrop: float,
     weights: dict[str, torch.FloatTensor],
     in_features: torch.FloatTensor,
 ) -> torch.FloatTensor:
@@ -105,6 +106,9 @@ def run_multihead_self_attention(
             Dimensionality of the feedforward input and output.
         num_heads: int
             Number of heads to use in multi-headed attention.
+        attn_pdrop: float
+            Drop-out the attention probabilities (the softmax-normalized
+            attention scores) with this rate.
         weights: dict[str, torch.FloatTensor]
             State dict of our reference implementation.
             The keys of this dictionary are:
@@ -154,24 +158,30 @@ def run_transformer_block(
             evenly divisible by `num_heads`.
         d_ff: int
             Dimensionality of the feed-forward inner layer (section 3.3).
-        attn_pdrop: Optional[float], default is None.
-            If given, drop-out the attention probabilities (the softmax-normalized
+        attn_pdrop: float
+            Drop-out the attention probabilities (the softmax-normalized
             attention scores) with this rate.
-        residual_pdrop: Optional[float], default is None.
-            If given, apply dropout to the output of each sub-layer, before it
+        residual_pdrop: float
+            Apply dropout to the output of each sub-layer, before it
             is added to the sub-layer input and normalized (section 5.4).
         weights: dict[str, torch.FloatTensor]
             State dict of our reference implementation.
             The keys of this dictionary are:
             - `attn.q_proj.weight`
                 The query projections for all `num_heads` attention heads.
-                Shape is ((d_model / num_heads) * num_heads, d_model).
+                Shape is (num_heads * (d_model / num_heads), d_model).
+                The rows are ordered by matrices of shape (num_heads, d_k),
+                so `attn.q_proj.weight == torch.cat([q_heads.0.weight, ..., q_heads.N.weight], dim=0)`.
             - `attn.k_proj.weight`
                 The key projections for all `num_heads` attention heads.
-                Shape is ((d_model / num_heads) * num_heads, d_model).
+                Shape is (num_heads * (d_model / num_heads), d_model).
+                The rows are ordered by matrices of shape (num_heads, d_k),
+                so `attn.k_proj.weight == torch.cat([k_heads.0.weight, ..., k_heads.N.weight], dim=0)`.
             - `attn.v_proj.weight`
                 The value projections for all `num_heads` attention heads.
-                Shape is ((d_model / num_heads) * num_heads, d_model).
+                Shape is (num_heads * (d_model / num_heads), d_model).
+                The rows are ordered by matrices of shape (num_heads, d_v),
+                so `attn.v_proj.weight == torch.cat([v_heads.0.weight, ..., v_heads.N.weight], dim=0)`.
             - `attn.output_proj.weight`
                 Weight of the multi-head self-attention output projection
                 Shape is ((d_model / num_heads) * num_heads, d_model).
@@ -229,11 +239,11 @@ def run_transformer_lm(
             evenly divisible by `num_heads`.
         d_ff: int
             Dimensionality of the feed-forward inner layer (section 3.3).
-        attn_pdrop: Optional[float], default is None.
-            If given, drop-out the attention probabilities (the softmax-normalized
+        attn_pdrop: float
+            Drop-out the attention probabilities (the softmax-normalized
             attention scores) with this rate.
-        residual_pdrop: Optional[float], default is None.
-            If given, apply dropout to the sum of the token and position embeddings
+        residual_pdrop: float
+            Apply dropout to the sum of the token and position embeddings
             as well as the output of each sub-layer, before it is added to the
             sub-layer input and normalized (section 5.4).
         weights: dict[str, torch.FloatTensor]
@@ -246,13 +256,19 @@ def run_transformer_lm(
                 Positional embedding matrix. Shape is (context_length, d_model).
             - `layers.{num_layers}.attn.q_proj.weight`
                 The query projections for all `num_heads` attention heads.
-                Shape is ((d_model / num_heads) * num_heads, d_model).
+                Shape is (num_heads * (d_model / num_heads), d_model).
+                The rows are ordered by matrices of shape (num_heads, d_k),
+                so `attn.q_proj.weight == torch.cat([q_heads.0.weight, ..., q_heads.N.weight], dim=0)`.
             - `layers.{num_layers}.attn.k_proj.weight`
                 The key projections for all `num_heads` attention heads.
-                Shape is ((d_model / num_heads) * num_heads, d_model).
+                Shape is (num_heads * (d_model / num_heads), d_model).
+                The rows are ordered by matrices of shape (num_heads, d_k),
+                so `attn.k_proj.weight == torch.cat([k_heads.0.weight, ..., k_heads.N.weight], dim=0)`.
             - `layers.{num_layers}.attn.v_proj.weight`
                 The value projections for all `num_heads` attention heads.
-                Shape is ((d_model / num_heads) * num_heads, d_model).
+                Shape is (num_heads * (d_model / num_heads), d_model).
+                The rows are ordered by matrices of shape (num_heads, d_v),
+                so `attn.v_proj.weight == torch.cat([v_heads.0.weight, ..., v_heads.N.weight], dim=0)`.
             - `layers.{num_layers}.attn.output_proj.weight`
                 Weight of the multi-head self-attention output projection
                 Shape is ((d_model / num_heads) * num_heads, d_model).
@@ -445,7 +461,7 @@ def run_get_lr_cosine_schedule(
             T_c, the number of cosine annealing iterations.
 
     Returns:
-        Tensor of shape () with the average cross-entropy loss across examples.
+        Learning rate at the given iteration under the specified schedule.
     """
     raise NotImplementedError
 
