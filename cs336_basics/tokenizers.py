@@ -1,8 +1,9 @@
+import regex as re
+from collections import Counter
+
 def bpe_tokenizer_training(input_path: str, 
                            vocab_size: int, 
-                           special_tokens: list[str], 
-                           vocab: dict[int, bytes], 
-                           merges: list[tuple[bytes, bytes]]):
+                           special_tokens: list[str]):
     """Given the path to an input corpus, run train a BPE tokenizer and
     output its vocabulary and merges.
 
@@ -27,9 +28,61 @@ def bpe_tokenizer_training(input_path: str,
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
                 """
-    #string to unicode character to byte with list(encoded)
-    #150,000 unicode characters, represented with 256 bytes so not 1:1
     with open(input_path, 'r') as file:
-        corpus = file.read()
-    vocab = {i: bytes([ord(c)]) for i, c in enumerate(special_tokens)}
-    #how do we initialize beyond the special tokens? should have 256 entries?
+            corpus = file.read()
+    vocab = init_vocab(special_tokens)
+    pretokenized_vocab = pretokenize_vocab(corpus, vocab)
+    merges = []
+    while len(vocab.keys()) < vocab_size:
+        pairs = get_pairs(pretokenized_vocab)
+        best_pair = max(pairs, key=lambda pair: (pairs.get(pair), max(pair)))
+        breakpoint()
+        pretokenized_vocab= merge_vocab(pretokenized_vocab, best_pair)
+        merges.append(best_pair)
+        try:
+            vocab[len(vocab)]= best_pair[0]+best_pair[1]
+        except:
+            vocab[len(vocab)+1]= best_pair.join()
+    breakpoint()
+    return (vocab, merges)
+
+def init_vocab(special_tokens: list[str]):
+    vocab = {i: bytes([i]) for i in range(256)}
+    vocab.update({i: (c.encode("utf-8")) for i, c in enumerate(special_tokens, start=256)})
+    return vocab
+
+def pretokenize_vocab(corpus: str, vocab: dict[int, bytes]):
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    tokens = re.findall(PAT, corpus)
+    for token, count in Counter(tokens).items():
+        for char in token:
+            if ord(char) not in vocab.keys():
+                vocab[ord(char)] = char.encode("utf-8")
+    return {(tuple(vocab[ord(char)] for char in token)): count for token, count in Counter(tokens).items()}
+
+def get_pairs(pretokenized_vocab: dict[tuple[int], int]):
+    pairs = Counter()
+    for token, count in pretokenized_vocab.items():
+        for i in range(len(token) - 1):
+            pairs[token[i], token[i + 1]] += count
+    return pairs
+
+def merge_vocab(pretokenize_dict: dict[tuple[bytes], int], pair: tuple[bytes, bytes]):
+    new_dict = {}
+    for key, value in pretokenize_dict.items():
+        new_key = []
+        i = 0
+        while i < len(key):
+            if key[i:i+2] == pair:
+                new_key.append(pair[0] + pair[1])
+                i += 2
+            else:
+                new_key.append(key[i])
+                i += 1
+        new_dict[tuple(new_key)] = value
+    return new_dict
+
+def reformat_vocab(vocab):
+    for key, value in vocab.items():    
+        print(value.decode("utf-8"))
+    return {value.decode("utf-8"): key for key, value in vocab.items()}
