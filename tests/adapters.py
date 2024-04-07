@@ -7,7 +7,7 @@ from typing import IO, BinaryIO, Iterable, Optional, Type
 import numpy.typing as npt
 import torch
 from cs336_basics.tokenizers import bpe_tokenizer_training
-from cs336_basics.transformers import rms_norm, gelu, feedforward, softmax, scaled_dot_product_attention
+from cs336_basics.transformers import *
 
 def run_positionwise_feedforward(
     d_model: int,
@@ -136,7 +136,7 @@ def run_multihead_self_attention(
         torch.FloatTensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    return multi_head_self_attention(d_model, num_heads, attn_pdrop, weights, in_features)
 
 
 def run_transformer_block(
