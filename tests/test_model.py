@@ -84,7 +84,6 @@ def test_multihead_self_attention():
     d_model = 64
     num_heads = 2
     attn_pdrop = 0.0
-    print('EXPECTed', expected_output.size())
     actual_output = run_multihead_self_attention(
         d_model=d_model,
         num_heads=num_heads,
@@ -92,7 +91,6 @@ def test_multihead_self_attention():
         weights=reference_weights,
         in_features=in_features,
     )
-    print('GOT', actual_output.size())
     numpy.testing.assert_allclose(
         actual_output.detach().numpy(), expected_output.detach().numpy(), atol=1e-6
     )

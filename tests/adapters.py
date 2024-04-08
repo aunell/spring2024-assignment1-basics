@@ -44,7 +44,7 @@ def run_positionwise_feedforward(
     # You can also manually assign the weights
     # my_ffn.w1.weight.data = weights["w1.weight"]
     # my_ffn.w2.weight.data = weights["w2.weight"]
-    return feedforward(d_model, d_ff, in_features, weights)
+    return feedforward(d_model, d_ff, in_features, weights, 'w1.weight', 'w2.weight')
 
 
 def run_scaled_dot_product_attention(
@@ -208,7 +208,17 @@ def run_transformer_block(
         FloatTensor of shape (batch_size, sequence_length, d_model) with the output of
         running the Transformer block on the input features.
     """
-    raise NotImplementedError
+    weight_keys = {
+            "rms_norm_1": "ln1.weight",
+            "rms_norm_2": "ln2.weight",
+            "positionwise_feedforward_1": "ffn.w1.weight",
+            "positionwise_feedforward_2": "ffn.w2.weight",
+            "q_proj": "attn.q_proj.weight",
+            "k_proj": "attn.k_proj.weight",
+            "v_proj": "attn.v_proj.weight",
+            "attn.output_proj":"attn.output_proj.weight"
+        }
+    return transformer_block(d_model, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, in_features, weight_keys)
 
 
 def run_transformer_lm(
@@ -301,7 +311,7 @@ def run_transformer_lm(
         FloatTensor of shape (batch size, sequence_length, vocab_size) with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    return transformer_lm(vocab_size, context_length, d_model, num_layers, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, in_indices)
 
 
 def run_rmsnorm(
@@ -332,7 +342,7 @@ def run_rmsnorm(
         FloatTensor of with the same shape as `in_features` with the output of running
         layernorm of the `in_features`.
     """
-    return rms_norm(in_features, weights, eps)
+    return rms_norm(in_features, weights, eps, 'weight')
 
 
 def run_gelu(in_features: torch.FloatTensor) -> torch.FloatTensor:
