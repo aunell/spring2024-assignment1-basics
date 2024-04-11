@@ -6,8 +6,9 @@ from typing import IO, BinaryIO, Iterable, Optional, Type
 
 import numpy.typing as npt
 import torch
-from cs336_basics.tokenizers import bpe_tokenizer_training
+from cs336_basics.tokenizers import *
 from cs336_basics.transformers import *
+from cs336_basics.training import *
 
 def run_positionwise_feedforward(
     d_model: int,
@@ -419,7 +420,7 @@ def run_cross_entropy(inputs: torch.FloatTensor, targets: torch.LongTensor):
     Returns:
         Tensor of shape () with the average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    return cross_entropy(inputs, targets)
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float):
@@ -434,14 +435,14 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
     Returns:
         None
     """
-    raise NotImplementedError
+    return gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Type[torch.optim.Optimizer]:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
@@ -474,7 +475,7 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    return get_lr_cosine_schedule(it, max_learning_rate, min_learning_rate, warmup_iters, cosine_cycle_iters)
 
 
 def run_save_checkpoint(
