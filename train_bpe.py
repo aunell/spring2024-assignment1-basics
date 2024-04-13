@@ -9,7 +9,7 @@ if not os.path.exists(f"data/{dataset}"):
     os.makedirs(f"data/{dataset}")
 
 print(f"Dataset: {dataset}")
-vocabulary, merges_overall = bpe_tokenizer_training(f"data/{dataset}.txt", 32000, ["<|endoftext|>"])
+vocabulary, merges_overall = bpe_tokenizer_training(f"/data/{dataset}.txt", 32000, ["<|endoftext|>"])
     
 #######################################################
 
