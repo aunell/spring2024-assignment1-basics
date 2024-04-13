@@ -2,8 +2,8 @@ from cs336_basics.tokenizer_train import *
 import json
 import os
 
-dataset = "/data/TinyStoriesV2-GPT4-train"
-#dataset = "/data/owt_train"
+dataset = "TinyStoriesV2-GPT4-train"
+#dataset = "owt_train"
 
 if not os.path.exists(f"data/{dataset}"):
     os.makedirs(f"data/{dataset}")
