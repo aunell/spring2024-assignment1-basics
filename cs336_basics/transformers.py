@@ -124,7 +124,6 @@ def transformer_lm(
         hidden_states = transformer_block(d_model, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, hidden_states, weight_keys=weight_keys)
     normalized_input_embeddings = rms_norm(hidden_states, weights, key='ln_final.weight')
     linear = torch.nn.functional.linear(normalized_input_embeddings, weights['lm_head.weight'])
-    # output = softmax(linear, dim=-1)
     return linear
 
 class SGD(torch.optim.Optimizer):
