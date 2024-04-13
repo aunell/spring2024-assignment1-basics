@@ -1,5 +1,27 @@
 import regex as re
 from collections import Counter
+from tqdm import tqdm
+
+class Tokenizer():
+    def __init__(self, vocab: dict[int, bytes], merges: list[tuple[bytes, bytes]], special_tokens: list[str]):
+        self.vocab = vocab
+        self.merges = merges
+        self.special_tokens = special_tokens
+    
+    def encode(self, text: str):
+        tokens = []
+        for token in re.findall(r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""", text):
+            token = tuple(self.vocab[ord(char)] for char in token if ord(char) in self.vocab)
+            tokens.extend(token)
+        self.cache[text] = tokens
+        return tokens
+
+    def decode(self, tokens: list[int]):
+        return "".join([self.vocab[token].decode("utf-8") for token in tokens])
+    
+    def tokenize(self, text: str):
+        return self.encode(text)
+    
 
 def bpe_tokenizer_training(input_path: str, 
                            vocab_size: int, 
@@ -28,54 +50,119 @@ def bpe_tokenizer_training(input_path: str,
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
                 """
-    with open(input_path, 'r', encoding='utf-8') as file:
-            corpus = file.read()
-    vocab = init_vocab(special_tokens)
-    pretokenized_vocab = pretokenize_vocab(corpus, vocab)
-    merges = []
-    # pairs = get_pairs(pretokenized_vocab)
-    while len(vocab.keys()) < vocab_size:
-        pairs = get_pairs(pretokenized_vocab)
-        best_pair = max(pairs, key=lambda pair: (pairs.get(pair), max(pair))) 
-        pretokenized_vocab= merge_vocab(pretokenized_vocab, best_pair)
-        merges.append(best_pair)
-        vocab[len(vocab)]= best_pair[0]+best_pair[1]
-    return (vocab, merges)
-
-def init_vocab(special_tokens: list[str]):
+    #init vocab
     vocab={}
-    vocab.update({i: (c.encode("utf-8")) for i, c in enumerate(special_tokens)})
-    vocab.update({i+1: bytes([i]) for i in range(0, 256)})
-    return vocab
+    vocab.update({i: bytes([i]) for i in range(256)})
+    vocab.update({256 + i: token.encode("utf-8") for i, token in enumerate(special_tokens) if token.encode("utf-8") not in vocab.values()})
 
-def pretokenize_vocab(corpus: str, vocab: dict[int, bytes]):
+    #pretokenize vocab
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-    tokens = re.findall(PAT, corpus)
-    return {(tuple(vocab[ord(char)] for char in token if ord(char) in vocab)): count for token, count in Counter(tokens).items()}
+    pretokenized_vocab = Counter()
+    with open(input_path, 'rb') as f:
+        for line in f:
+            d_line = line.decode("utf-8")
+            untokenized_words = re.findall(PAT, d_line)
+            tokenized_words = [token.encode() for token in untokenized_words]
+            pretokenized_vocab.update(tokenized_words)
 
-def get_pairs(pretokenized_vocab: dict[tuple[int], int]):
-    pairs = Counter()
+    unmerged_to_merged_map = {token: token for token in pretokenized_vocab.keys()} #byte to byte
+
+    #get pairs
+    pairs = Counter() #mapping of byte pairs to frequency
+    impacted_tokens = {} #mapping of byte pairs to list of tokens that will be impacted by the merge
     for token, count in pretokenized_vocab.items():
-        for i in range(len(token) - 1):
-            pairs[token[i], token[i + 1]] += count
-    return pairs
+        byte_pair_list_per_token = [(token[i], token[i+1]) for i in range(len(token) - 1)]
+        for pair in byte_pair_list_per_token:
+            pairs[pair] += count
+            impacted_tokens = add_adjacent_token(impacted_tokens, pair, token)
+            #pairs is a mapping of int pairs to their frequency
+            #impacted tokens is a mapping of int pairs to the byte tokens that will be impacted by the merge
+    #merge pairs
+    merges = []
+    while len(vocab.keys()) < vocab_size:
+        # # Get most frequent byte pair that is also lexically greatest
+        best_pair = return_best_pair(pairs, vocab) #ints
+        pairs[best_pair] = 0 #set frequency to 0
+        merges.append((vocab[best_pair[0]],vocab[best_pair[1]]))
+        vocab[len(vocab)]= (vocab[best_pair[0]]+vocab[best_pair[1]]) #vocab[best_pair] is byte assoiated with best pair index
+        updated_tokens = impacted_tokens[best_pair]
+        for adj_token in updated_tokens:
+            # breakpoint()
+            unmerged_token = unmerged_to_merged_map[adj_token]
+            new_merged_token = merge_token(unmerged_token, best_pair, vocab)
+            unmerged_to_merged_map[adj_token] = new_merged_token #update the mapping of unmerged to merged tokens, mapped to int representation
+            pairs, impacted_tokens = update_pairs_and_tokens(pairs, pretokenized_vocab, impacted_tokens, new_merged_token, adj_token, best_pair, vocab)
 
-def merge_vocab(pretokenize_dict: dict[tuple[bytes], int], pair: tuple[bytes, bytes]):
-    new_dict = {}
-    for key, value in pretokenize_dict.items():
-            new_key = []
-            i = 0
-            while i < len(key):
-                if key[i:i+2] == pair:
-                    new_key.append(pair[0] + pair[1])
-                    i += 2
+    return vocab, merges
+
+def return_best_pair(pairs, vocab):
+    max_value = max(pairs.values())
+    best_pairs = [pair for pair, value in pairs.items() if value == max_value]
+    if len(best_pairs) == 1:
+        return best_pairs[0]
+    else: #tie break
+        best_byte_pairs_byte = [(vocab[pair[0]], vocab[pair[1]]) for pair in best_pairs] #byte pairs in bytes instead of ints
+        best_byte_pair  = max(best_byte_pairs_byte) #find best best byte pair lexically
+        best_byte_pair_final = next(pair for pair, byte_pair in zip(best_pairs, best_byte_pairs_byte) if byte_pair == best_byte_pair)
+        return best_byte_pair_final
+
+def add_adjacent_token(impacted_tokens, pair, token):
+    if pair in impacted_tokens.keys():
+        if token not in impacted_tokens[pair]:
+            impacted_tokens[pair].append(token)
+            #add that the given token will be impacted by the merge
+    else:
+        impacted_tokens[pair] = [token]
+    return impacted_tokens
+
+def merge_token(token, pair, vocab):
+    '''
+    merges the token based on the most frequent pair of byte indices
+    token is byte pair, pair is tuple of indices, vocab is dictionary mapping int to bytes'''
+    id =len(vocab)-1 #id of the new token that is formed from the pair merging
+    token_merge = list(token) #turns bytes into their int representation
+    i = 0 
+    while i<len(token_merge)-1:
+        t1, t2 = token_merge[i], token_merge[i+1]
+        if (t1, t2) == pair:
+            token_merge = token_merge[:i] + [id] + token_merge[i+2:] #new list of indices with the pair merged and replaced by last elem of vocab
+        else:
+            i+=1
+    return token_merge
+
+def update_pairs_and_tokens(pairs, pretokenized_vocab,  impacted_tokens, new_token, token, best_pair, vocab):
+    '''
+    updates the pairs and impacted tokens after a merge
+    pairs is a mapping of byte pair ints to their frequency
+    pretokenized_vocab is a mapping of byte tokens to their frequency
+    impacted tokens is a mapping of ints to the byte tokens that will be impacted by the merge
+        ie (78, 73): [b' UNIVERSE', b' NI']
+    new_token is the merged token ints
+    token is the byte representaiton of the token impacted by the merge
+    best_pair is the indices of the pair of bytes that was merged
+    vocab is a mapping of int to bytes'''
+    # breakpoint() #refactor
+    id = len(vocab) - 1
+    for i in range(len(new_token)):
+        if new_token[i] == id: #if we are at the part of the new token that is merging
+            count = pretokenized_vocab.get(token, 0)
+            if i>0:
+                byte_before_merge = new_token[i-1]
+                pairs[(byte_before_merge, best_pair[0])]-= count #decrement pair (which is inside the adj token) by how many times the merged token appears in the adjacent token
+                pairs[(byte_before_merge, id)] +=count #add pair that accounts for the adjacent token + new merged token presence
+                if (byte_before_merge, id) in impacted_tokens.keys():
+                    if token not in impacted_tokens[(byte_before_merge, id)]:
+                        impacted_tokens[(byte_before_merge, id)].append(token)
                 else:
-                    new_key.append(key[i])
-                    i += 1
-            new_dict[tuple(new_key)] = value
-    return new_dict
+                    impacted_tokens[(byte_before_merge, id)] = [token]
+            if i<len(new_token)-1:
+                byte_after_merge = new_token[i+1]
+                pairs[(best_pair[1], byte_after_merge)] -= count
+                pairs[(id, byte_after_merge)]+= count
+                if ((id, byte_after_merge)) in impacted_tokens.keys():
+                    if token not in impacted_tokens[(id, byte_after_merge)]:
+                        impacted_tokens[(id, byte_after_merge)].append(token)
+                else:
+                    impacted_tokens[(id, byte_after_merge)] = [token]
 
-def reformat_vocab(vocab):
-    for key, value in vocab.items():    
-        print(value.decode("utf-8"))
-    return {value.decode("utf-8"): key for key, value in vocab.items()}
+    return pairs, impacted_tokens

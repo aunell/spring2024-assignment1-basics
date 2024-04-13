@@ -122,10 +122,10 @@ def transformer_lm(
             "attn.output_proj": f"layers.{layer_number}.attn.output_proj.weight"
         }
         hidden_states = transformer_block(d_model, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, hidden_states, weight_keys=weight_keys)
-    normalized_input_embeddings = rms_norm(input_embeddings, weights, key='ln_final.weight')
+    normalized_input_embeddings = rms_norm(hidden_states, weights, key='ln_final.weight')
     linear = torch.nn.functional.linear(normalized_input_embeddings, weights['lm_head.weight'])
-    output = softmax(linear, dim=-1)
-    return output
+    # output = softmax(linear, dim=-1)
+    return linear
 
 class SGD(torch.optim.Optimizer):
     def __init__(self, params, lr=1e-3):
@@ -220,3 +220,6 @@ def gradient_clipping(parameters, max_l2_norm):
             norm = torch.norm(p.grad, p=2)
             if norm > max_l2_norm:
                 p.grad*max_l2_norm/(norm+1e-6)
+
+#model class subclass of nn.module with transformer block 
+                ##transformer lm model class has a list of transformer block classes (which also stores weights )

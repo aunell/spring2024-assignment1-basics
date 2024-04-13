@@ -9,6 +9,7 @@ import torch
 from cs336_basics.tokenizers import *
 from cs336_basics.transformers import *
 from cs336_basics.training import *
+# from cs336_basics.k_tokenizer import *
 
 def run_positionwise_feedforward(
     d_model: int,
@@ -548,7 +549,7 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
-    raise NotImplementedError
+    return Tokenizer(vocab, merges, special_tokens)
 
 
 def run_train_bpe(
