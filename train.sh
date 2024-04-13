@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=100G
-#SBATCH --time=48:00:00
+#SBATCH --time=6:00:00
 #SBATCH --output=hello_batch_%j.out
 #SBATCH --error=hello_batch_%j.err
 
