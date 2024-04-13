@@ -12,4 +12,4 @@
 eval "$(conda shell.bash hook)"
 conda activate cs336_basics
 
-python3 train_bpe.py
+python3 train_bpe.py &> output.txt
