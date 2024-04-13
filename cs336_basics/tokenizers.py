@@ -1,5 +1,6 @@
 import regex as re
 from collections import Counter
+import time
 from tqdm import tqdm
 
 class Tokenizer():
@@ -51,9 +52,12 @@ def bpe_tokenizer_training(input_path: str,
                 Merges are ordered by order of creation.
                 """
     #init vocab
+    time1 = time.time()
     vocab={}
     vocab.update({i: bytes([i]) for i in range(256)})
     vocab.update({256 + i: token.encode("utf-8") for i, token in enumerate(special_tokens) if token.encode("utf-8") not in vocab.values()})
+    time2 = time.time()
+    print('init vocab', time2-time1)
 
     #pretokenize vocab
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
@@ -66,7 +70,8 @@ def bpe_tokenizer_training(input_path: str,
             pretokenized_vocab.update(tokenized_words)
 
     unmerged_to_merged_map = {token: token for token in pretokenized_vocab.keys()} #byte to byte
-
+    time3 = time.time()
+    print('pretokenize vocab', time3-time2)
     #get pairs
     pairs = Counter() #mapping of byte pairs to frequency
     impacted_tokens = {} #mapping of byte pairs to list of tokens that will be impacted by the merge
@@ -79,6 +84,8 @@ def bpe_tokenizer_training(input_path: str,
             #impacted tokens is a mapping of int pairs to the byte tokens that will be impacted by the merge
     #merge pairs
     merges = []
+    time4 = time.time()
+    print('get pairs', time4-time3)
     while len(vocab.keys()) < vocab_size:
         # # Get most frequent byte pair that is also lexically greatest
         best_pair = return_best_pair(pairs, vocab) #ints
@@ -89,10 +96,15 @@ def bpe_tokenizer_training(input_path: str,
         for adj_token in updated_tokens:
             # breakpoint()
             unmerged_token = unmerged_to_merged_map[adj_token]
+            time5 = time.time()
             new_merged_token = merge_token(unmerged_token, best_pair, vocab)
+            time6 = time.time()
             unmerged_to_merged_map[adj_token] = new_merged_token #update the mapping of unmerged to merged tokens, mapped to int representation
+            time7 = time.time()
             pairs, impacted_tokens = update_pairs_and_tokens(pairs, pretokenized_vocab, impacted_tokens, new_merged_token, adj_token, best_pair, vocab)
-
+            time8 = time.time()
+    time9 = time.time()
+    print(time2-time1, time3-time2, time4-time3, time9-time4, time6-time5, time8-time7 )
     return vocab, merges
 
 def return_best_pair(pairs, vocab):
