@@ -1,4 +1,4 @@
-from cs336_basics.tokenizers import *
+from cs336_basics.tokenizer_train import *
 import json
 
 # input_path = '/data/TinyStoriesV2-GPT4-train.txt'

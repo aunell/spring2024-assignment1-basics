@@ -6,10 +6,10 @@ from typing import IO, BinaryIO, Iterable, Optional, Type
 
 import numpy.typing as npt
 import torch
-from cs336_basics.tokenizers import *
+from cs336_basics.tokenizer_train import *
 from cs336_basics.transformers import *
 from cs336_basics.training import *
-# from cs336_basics.k_tokenizer import *
+from cs336_basics.tokenizer import Tokenizer
 
 def run_positionwise_feedforward(
     d_model: int,

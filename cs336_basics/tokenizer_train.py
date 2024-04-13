@@ -1,28 +1,6 @@
 import regex as re
 from collections import Counter
 import time
-from tqdm import tqdm
-
-class Tokenizer():
-    def __init__(self, vocab: dict[int, bytes], merges: list[tuple[bytes, bytes]], special_tokens: list[str]):
-        self.vocab = vocab
-        self.merges = merges
-        self.special_tokens = special_tokens
-    
-    def encode(self, text: str):
-        tokens = []
-        for token in re.findall(r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""", text):
-            token = tuple(self.vocab[ord(char)] for char in token if ord(char) in self.vocab)
-            tokens.extend(token)
-        self.cache[text] = tokens
-        return tokens
-
-    def decode(self, tokens: list[int]):
-        return "".join([self.vocab[token].decode("utf-8") for token in tokens])
-    
-    def tokenize(self, text: str):
-        return self.encode(text)
-    
 
 def bpe_tokenizer_training(input_path: str, 
                            vocab_size: int, 
@@ -53,8 +31,7 @@ def bpe_tokenizer_training(input_path: str,
                 """
     #init vocab
     time1 = time.time()
-    vocab={}
-    vocab.update({i: bytes([i]) for i in range(256)})
+    vocab = {i: bytes([i]) for i in range(256)}
     vocab.update({256 + i: token.encode("utf-8") for i, token in enumerate(special_tokens) if token.encode("utf-8") not in vocab.values()})
     time2 = time.time()
     print('init vocab', time2-time1)
