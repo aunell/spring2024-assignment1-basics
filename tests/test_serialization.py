@@ -104,6 +104,7 @@ def test_checkpointing(tmp_path):
     loaded_iterations = run_load_checkpoint(
         src=serialization_path, model=new_model, optimizer=new_optimizer
     )
+    # breakpoint()
     assert it == loaded_iterations
 
     # Compare the loaded model state with the original model state
