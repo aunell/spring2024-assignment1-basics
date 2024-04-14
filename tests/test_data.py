@@ -33,7 +33,7 @@ def test_get_batch():
         np.testing.assert_allclose((x + 1).detach().numpy(), y.detach().numpy())
 
         starting_indices.update(x[:, 0].tolist())
-
+    breakpoint()
     # Make sure we never sample an invalid start index
     num_possible_starting_indices = len(dataset) - context_length
     assert max(starting_indices) == num_possible_starting_indices - 1

@@ -8,8 +8,9 @@ import numpy.typing as npt
 import torch
 from cs336_basics.tokenizer_train import *
 from cs336_basics.transformers import *
-from cs336_basics.training import *
+from cs336_basics.training_params import *
 from cs336_basics.tokenizer import Tokenizer
+from cs336_basics.train_loop import *
 
 def run_positionwise_feedforward(
     d_model: int,
@@ -220,7 +221,7 @@ def run_transformer_block(
             "v_proj": "attn.v_proj.weight",
             "attn.output_proj":"attn.output_proj.weight"
         }
-    return transformer_block(d_model, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, in_features, weight_keys)
+    return Transformer_block(d_model, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, in_features).forward()
 
 
 def run_transformer_lm(
@@ -313,8 +314,9 @@ def run_transformer_lm(
         FloatTensor of shape (batch size, sequence_length, vocab_size) with the predicted unnormalized
         next-word distribution for each token.
     """
-    return transformer_lm(vocab_size, context_length, d_model, num_layers, num_heads, d_ff, attn_pdrop, residual_pdrop, weights, in_indices)
-
+    transformer_lm = Transformer_LM(weights, d_model, num_layers, num_heads, d_ff, attn_pdrop, residual_pdrop, vocab_size, context_length, in_indices)
+    return transformer_lm.forward()
+    
 
 def run_rmsnorm(
     d_model: int,
@@ -386,7 +388,7 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    return get_batch(dataset, batch_size, context_length, device)
 
 
 def run_softmax(in_features: torch.FloatTensor, dim: int) -> torch.FloatTensor:

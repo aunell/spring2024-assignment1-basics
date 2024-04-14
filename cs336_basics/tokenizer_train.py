@@ -57,9 +57,6 @@ def bpe_tokenizer_training(input_path: str,
         for pair in byte_pair_list_per_token:
             pairs[pair] += count
             impacted_tokens = add_adjacent_token(impacted_tokens, pair, token)
-            #pairs is a mapping of int pairs to their frequency
-            #impacted tokens is a mapping of int pairs to the byte tokens that will be impacted by the merge
-    #merge pairs
     merges = []
     time4 = time.time()
     print('get pairs', time4-time3)
